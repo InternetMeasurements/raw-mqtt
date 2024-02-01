@@ -91,7 +91,7 @@ impl Network for ChannelNetwork {
                 spawn_receiver(self.tracker.clone(), self.cancellation_token.clone(), tx_receiver, tls.rx_stream);
             },
             Transport::QUIC => {
-                let quic = Quic::new(host, port, &self.insecure).await?;
+                let quic = Quic::new(host, port, &self.insecure, &server_name).await?;
 
                 // Sender task
                 spawn_sender(self.tracker.clone(), self.cancellation_token.clone(), rx_sender, quic.tx_stream);

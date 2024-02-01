@@ -39,7 +39,7 @@ impl Network for SimpleNetwork {
                 *tls = Some(Tls::new(host, port, insecure, &server_name).await?);
             },
             SimpleNetwork::QUIC(quic, insecure) => {
-                *quic = Some(Quic::new(host, port, insecure).await?);
+                *quic = Some(Quic::new(host, port, insecure, &server_name).await?);
             }
         }
         Ok(())
