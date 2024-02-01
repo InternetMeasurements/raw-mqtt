@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -40,7 +41,7 @@ pub struct Quic {
 }
 
 impl Quic {
-    pub async fn new(host: &String, port: &String, insecure: &bool) -> Result<Quic, Box<dyn Error>> {
+    pub async fn new(host: &String, port: &String, insecure: &bool, sever_name: &String) -> Result<Quic, Box<dyn Error>> {
 
         // Set server certificate verification
         let mut tls_config = if *insecure {
@@ -53,7 +54,7 @@ impl Quic {
         else {
             let mut roots = quinn_rustls::RootCertStore::empty();
             for root in rustls_native_certs::load_native_certs().expect("Failed to load native certs") {
-                roots.add(&quinn_rustls::Certificate(root.0)).expect("Failed to add root certificate");
+                roots.add(&quinn_rustls::Certificate(root.to_vec())).expect("Failed to add root certificate");
             }
             quinn_rustls::ClientConfig::builder()
                 .with_safe_defaults()
@@ -78,10 +79,16 @@ impl Quic {
         let endpoint =  Endpoint::client("0.0.0.0:0".parse().unwrap())
             .expect("Failed to build endpoint");
 
+        // Resolve host address
+        let socket_addr: Vec<SocketAddr> = format!("{host}:{port}")
+            .to_socket_addrs()
+            .expect("Failed to resolve host")
+            .collect();
+
         let connection = endpoint.connect_with(
             client_config,
-            format!("{host}:{port}").parse().unwrap(),
-            "localhost"
+            socket_addr[0],
+            sever_name.as_str(),
         ).expect("Connection failed").await?;
 
         let (tx_stream, rx_stream) = connection.open_bi().await?;
