@@ -65,6 +65,10 @@ pub struct Args {
 
 #[derive(clap::Args)]
 #[command(author, version, about, long_about = None)]
+#[clap(group(clap::ArgGroup::new("payload")
+    .required(true)
+    .args(&["size", "message"]),
+))]
 pub struct PublishArgs{
 
     #[command(flatten)]
