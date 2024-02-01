@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "raw-mqtt-lib",
+    "raw-mqtt-cli",
+    "raw-mqtt-stream-cli"
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
