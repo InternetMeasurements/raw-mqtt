@@ -8,7 +8,7 @@ pub mod network;
 pub mod client;
 pub mod utility;
 
-pub static ACK_PACKET_SIZE: usize = 4;
+pub const ACK_PACKET_SIZE: usize = 4;
 
 pub(crate) fn parse_packet(stream: &mut BytesMut, max_size: usize, version: &Version) -> Result<Packet, mqttbytes::Error> {
     match version { 
