@@ -9,7 +9,7 @@ const DEFAULT_PROTO_VERSION: &str = "3.1.1";
 const DEFAULT_SERVER_NAME: &str = "localhost";
 const DEFAULT_INSECURE: bool = false;
 const DEFAULT_DEBUG: bool = false;
-const DEFAULT_RATE: f32 = 0.0;
+const DEFAULT_RATE: f64 = 0.0;
 const DEFAULT_DURATION: usize = 10;
 
 #[derive(Debug, Clone)]
@@ -112,7 +112,7 @@ pub struct PublishStreamArgs{
     pub args: PublishArgs,
 
     #[arg(short, long, default_value_t=DEFAULT_RATE)]
-    pub rate: f32,
+    pub rate: f64,
 
     #[arg(long, default_value_t=DEFAULT_DURATION)]
     pub duration: usize

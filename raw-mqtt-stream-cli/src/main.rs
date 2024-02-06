@@ -68,13 +68,13 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
             match rate {
                 Some(rate) => {
                     let test_duration = Duration::from_secs(duration.unwrap() as u64);
-                    let rate = 1.0 / rate as f64;
-                    let num_messages = test_duration.as_millis() / Duration::from_secs_f64(rate).as_millis();
+                    let rate = 1.0 / rate;
+                    let num_messages = test_duration.as_micros() / Duration::from_secs_f64(rate).as_micros();
 
                     info!("Sending {} messages", num_messages);
 
                     let mut interval_timer = tokio::time::interval(
-                        chrono::Duration::milliseconds(Duration::from_secs_f64(rate).as_millis() as i64).to_std().unwrap());
+                        chrono::Duration::microseconds(Duration::from_secs_f64(rate).as_micros() as i64).to_std().unwrap());
 
                     for _ in 0..num_messages {
 
