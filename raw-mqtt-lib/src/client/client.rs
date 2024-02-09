@@ -10,7 +10,7 @@ use crate::network::transport::Transport;
 use crate::network::network::Network;
 use crate::{ACK_PACKET_SIZE, parse_packet, Version};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client<T> {
     client_id: String,
     pub(crate) pkid: Arc<AtomicU16>,
