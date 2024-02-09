@@ -11,6 +11,7 @@ path = "src/lib.rs"
 
 [features]
 pub_stream = []
+constrained-rate = []
 
 
 [dependencies]
