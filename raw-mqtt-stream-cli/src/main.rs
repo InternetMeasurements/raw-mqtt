@@ -65,6 +65,7 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
 
     match request {
         Request::Publish => {
+            let payload = message_payload.unwrap();
             match rate {
                 Some(rate) => {
                     let test_duration = Duration::from_secs(duration.unwrap() as u64);
@@ -87,23 +88,21 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
                             .expect("Time went backwards")
                             .as_nanos();
 
+                        let topic = args.topic.to_string();
+
                         // Publish new message (stream publish)
                         client.stream_publish(
-                            args.topic.to_string(),
-                            format!("{{\"timestamp\":{:},\"payload\":\"{:}\"}}", generation_timestamp, message_payload.clone().unwrap()).to_string(),
-                            QoS::AtMostOnce,
+                            topic.to_string(),
+                            format!("{{\"timestamp\":{:},\"payload\":\"{:}\"}}", generation_timestamp, payload),
+                            qos
                         ).await?;
-
-                        debug!("Task submitted !");
                     }
-                    debug!("All tasks submitted !");
-                },
+                }
                 None => {
-                    let message_payload = message_payload.unwrap();
-                    info!("Publishing message of size: {}", message_payload.len());
+                    info!("Publishing message of size: {}", payload.len());
                     client.publish(
                         args.topic,
-                        message_payload,
+                        payload,
                         qos
                     ).await?;
                 }
