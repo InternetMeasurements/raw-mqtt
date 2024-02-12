@@ -16,7 +16,10 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
     let (request, args, message_payload, rate, duration) =  match MqttStreamCli::parse() {
         MqttStreamCli::Publish(args) => {
             let payload = match args.args.size {
-                Some(size) => {
+                Some(mut size) => {
+                    if args.rate > 0f64 {
+                        size = size - 33;
+                    }
                     String::from_utf8(vec![127_u8; size]).unwrap()
                 },
                 None => {
@@ -68,9 +71,8 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
             let payload = message_payload.unwrap();
             match rate {
                 Some(rate) => {
-                    let test_duration = Duration::from_secs(duration.unwrap() as u64);
+                    let num_messages = duration.unwrap() * rate as usize;
                     let rate = 1.0 / rate;
-                    let num_messages = test_duration.as_micros() / Duration::from_secs_f64(rate).as_micros();
 
                     info!("Sending {} messages", num_messages);
 
@@ -93,7 +95,7 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
                         // Publish new message (stream publish)
                         client.stream_publish(
                             topic.to_string(),
-                            format!("{{\"timestamp\":{:},\"payload\":\"{:}\"}}", generation_timestamp, payload),
+                            format!("{:}{:}", generation_timestamp, payload),
                             qos
                         ).await?;
                     }
