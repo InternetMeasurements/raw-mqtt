@@ -92,7 +92,7 @@ impl <T> Client<T> {
         info!("Connection ack: {packet:?}");
 
         // Check received message
-        match (self.version.clone(), packet) {
+        match (self.version, packet) {
             (Version::V31, _) => {
                 todo!("MQTT v3.1 not supported yet")
             },

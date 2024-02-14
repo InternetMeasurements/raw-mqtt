@@ -57,7 +57,7 @@ pub struct MqttMessage {
     pub qos: QoS
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Version {
     V31,
     V311,
