@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use quinn::{Endpoint, RecvStream, SendStream, TransportConfig};
 
-use tokio::io::{ReadHalf, split, WriteHalf};
+use tokio::io::{split, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tokio_rustls::rustls::pki_types::ServerName;
@@ -17,19 +17,18 @@ use crate::network::server_verification::{QuinnSkipServerVerification, SkipServe
 pub enum Transport {
     TCP,
     TLS,
-    QUIC
+    QUIC,
 }
 
 impl FromStr for Transport {
-
     type Err = String;
 
     fn from_str(transport: &str) -> Result<Transport, Self::Err> {
         match transport {
-            "tcp"   => Ok(Transport::TCP),
-            "tls"   => Ok(Transport::TLS),
-            "quic"  => Ok(Transport::QUIC),
-            _       => Err("Invalid transport protocol".to_string())
+            "tcp" => Ok(Transport::TCP),
+            "tls" => Ok(Transport::TLS),
+            "quic" => Ok(Transport::QUIC),
+            _ => Err("Invalid transport protocol".to_string()),
         }
     }
 }
@@ -37,12 +36,16 @@ impl FromStr for Transport {
 #[derive(Debug)]
 pub struct Quic {
     pub(crate) tx_stream: SendStream,
-    pub(crate) rx_stream: RecvStream
+    pub(crate) rx_stream: RecvStream,
 }
 
 impl Quic {
-    pub async fn new(host: &String, port: &String, insecure: &bool, sever_name: &String) -> Result<Quic, Box<dyn Error>> {
-
+    pub async fn new(
+        host: &String,
+        port: &String,
+        insecure: &bool,
+        sever_name: &String,
+    ) -> Result<Quic, Box<dyn Error>> {
         // Set server certificate verification
         let mut tls_config = if *insecure {
             // If insecure skip server verification
@@ -50,11 +53,14 @@ impl Quic {
                 .with_safe_defaults()
                 .with_custom_certificate_verifier(QuinnSkipServerVerification::new())
                 .with_no_client_auth()
-        }
-        else {
+        } else {
             let mut roots = quinn_rustls::RootCertStore::empty();
-            for root in rustls_native_certs::load_native_certs().expect("Failed to load native certs") {
-                roots.add(&quinn_rustls::Certificate(root.to_vec())).expect("Failed to add root certificate");
+            for root in
+                rustls_native_certs::load_native_certs().expect("Failed to load native certs")
+            {
+                roots
+                    .add(&quinn_rustls::Certificate(root.to_vec()))
+                    .expect("Failed to add root certificate");
             }
             quinn_rustls::ClientConfig::builder()
                 .with_safe_defaults()
@@ -67,17 +73,15 @@ impl Quic {
         alpn.push("mqtt".as_bytes().to_vec());
         tls_config.alpn_protocols = alpn;
 
-
-        let mut client_config = quinn::ClientConfig::new(
-            Arc::new(tls_config));
+        let mut client_config = quinn::ClientConfig::new(Arc::new(tls_config));
 
         // Disable unsupported feature segmentation offload
         let mut transport_config = TransportConfig::default();
         transport_config.enable_segmentation_offload(false);
         client_config.transport_config(Arc::new(transport_config));
 
-        let endpoint =  Endpoint::client("0.0.0.0:0".parse().unwrap())
-            .expect("Failed to build endpoint");
+        let endpoint =
+            Endpoint::client("0.0.0.0:0".parse().unwrap()).expect("Failed to build endpoint");
 
         // Resolve host address
         let socket_addr: Vec<SocketAddr> = format!("{host}:{port}")
@@ -85,17 +89,16 @@ impl Quic {
             .expect("Failed to resolve host")
             .collect();
 
-        let connection = endpoint.connect_with(
-            client_config,
-            socket_addr[0],
-            sever_name.as_str(),
-        ).expect("Connection failed").await?;
+        let connection = endpoint
+            .connect_with(client_config, socket_addr[0], sever_name.as_str())
+            .expect("Connection failed")
+            .await?;
 
         let (tx_stream, rx_stream) = connection.open_bi().await?;
 
         Ok(Quic {
             tx_stream,
-            rx_stream
+            rx_stream,
         })
     }
 }
@@ -103,7 +106,7 @@ impl Quic {
 #[derive(Debug)]
 pub struct Tcp {
     pub(crate) rx_stream: ReadHalf<TcpStream>,
-    pub(crate) tx_stream: WriteHalf<TcpStream>
+    pub(crate) tx_stream: WriteHalf<TcpStream>,
 }
 
 impl Tcp {
@@ -116,7 +119,7 @@ impl Tcp {
 
         Ok(Tcp {
             rx_stream,
-            tx_stream
+            tx_stream,
         })
     }
 }
@@ -124,11 +127,16 @@ impl Tcp {
 #[derive(Debug)]
 pub struct Tls {
     pub(crate) rx_stream: ReadHalf<TlsStream<TcpStream>>,
-    pub(crate) tx_stream: WriteHalf<TlsStream<TcpStream>>
+    pub(crate) tx_stream: WriteHalf<TlsStream<TcpStream>>,
 }
 
 impl Tls {
-    pub async fn new(host: &String, port: &String, insecure: &bool, server_name: &String) -> Result<Tls, Box<dyn Error>> {
+    pub async fn new(
+        host: &String,
+        port: &String,
+        insecure: &bool,
+        server_name: &String,
+    ) -> Result<Tls, Box<dyn Error>> {
         let tcp_stream = TcpStream::connect(format!("{host}:{port}")).await?;
 
         // Set server certificate verification
@@ -138,8 +146,7 @@ impl Tls {
                 .dangerous()
                 .with_custom_certificate_verifier(SkipServerVerification::new())
                 .with_no_client_auth()
-        }
-        else {
+        } else {
             let mut roots = tokio_rustls::rustls::RootCertStore::empty();
             roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
             tokio_rustls::rustls::ClientConfig::builder()
@@ -147,19 +154,20 @@ impl Tls {
                 .with_no_client_auth()
         };
 
-
         let connector = TlsConnector::from(Arc::new(tls_client_config));
-        let tls_stream = connector.connect(
-            ServerName::try_from(server_name.as_str())?.to_owned(),
-            tcp_stream
-        ).await?;
+        let tls_stream = connector
+            .connect(
+                ServerName::try_from(server_name.as_str())?.to_owned(),
+                tcp_stream,
+            )
+            .await?;
 
         // Split into parse_packet and write halves
         let (rx_stream, tx_stream) = split(tls_stream);
 
         Ok(Tls {
             rx_stream,
-            tx_stream
+            tx_stream,
         })
     }
 }

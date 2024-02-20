@@ -1,10 +1,10 @@
 use clap::Parser;
 
-const DEFAULT_HOST : &str = "127.0.0.1";
-const DEFAULT_PORT : u16 = 1883;
-const DEFAULT_TRANSPORT : &str = "tcp";
-const DEFAULT_KEEP_ALIVE : u64 = 5;
-const DEFAULT_QOS : u8 = 1;
+const DEFAULT_HOST: &str = "127.0.0.1";
+const DEFAULT_PORT: u16 = 1883;
+const DEFAULT_TRANSPORT: &str = "tcp";
+const DEFAULT_KEEP_ALIVE: u64 = 5;
+const DEFAULT_QOS: u8 = 1;
 const DEFAULT_PROTO_VERSION: &str = "3.1.1";
 const DEFAULT_SERVER_NAME: &str = "localhost";
 const DEFAULT_INSECURE: bool = false;
@@ -16,7 +16,7 @@ const DEFAULT_QUEUE: i64 = 1024;
 #[derive(Debug, Clone)]
 pub enum Request {
     Publish,
-    Subscribe
+    Subscribe,
 }
 
 #[derive(Parser)]
@@ -33,7 +33,6 @@ pub enum MqttCli {
 #[derive(clap::Args, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-
     #[arg(long, default_value = DEFAULT_HOST)]
     pub host: String,
 
@@ -62,7 +61,7 @@ pub struct Args {
     pub server_name: String,
 
     #[arg(short, long, default_value_t = DEFAULT_DEBUG)]
-    pub debug: bool
+    pub debug: bool,
 }
 
 #[derive(clap::Args)]
@@ -71,8 +70,7 @@ pub struct Args {
     .required(true)
     .args(&["size", "message"]),
 ))]
-pub struct PublishArgs{
-
+pub struct PublishArgs {
     #[command(flatten)]
     pub args: Args,
 
@@ -80,35 +78,32 @@ pub struct PublishArgs{
     pub size: Option<usize>,
 
     #[arg(long, group = "payload")]
-    pub message: Option<String>
-
+    pub message: Option<String>,
 }
 
 #[derive(clap::Args)]
 #[command(author, version, about, long_about = None)]
-pub struct SubscribeArgs{
+pub struct SubscribeArgs {
     #[command(flatten)]
-    pub args: Args
+    pub args: Args,
 }
 
 #[cfg(feature = "pub_stream")]
 #[derive(Parser)]
 #[command(name = "mqtt-client")]
 #[command(bin_name = "mqtt-client")]
-pub enum MqttStreamCli{
+pub enum MqttStreamCli {
     #[clap(alias = "pub")]
     Publish(PublishStreamArgs),
 
     #[clap(alias = "sub")]
     Subscribe(SubscribeArgs),
-
 }
 
 #[cfg(feature = "pub_stream")]
 #[derive(clap::Args)]
 #[command(author, version, about, long_about = None)]
-pub struct PublishStreamArgs{
-
+pub struct PublishStreamArgs {
     #[command(flatten)]
     pub args: PublishArgs,
 
@@ -120,5 +115,5 @@ pub struct PublishStreamArgs{
 
     #[clap(allow_hyphen_values = true)]
     #[arg(long, default_value_t=DEFAULT_QUEUE)]
-    pub queue: i64
+    pub queue: i64,
 }
