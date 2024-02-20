@@ -58,7 +58,7 @@ impl StreamMqttClient {
 
         let pending_requests = self.pending_requests.clone();
         let mut recv_network = self._client.network.clone();
-        let version = self._client.version.clone();
+        let version = self._client.version;
         let cancellation_tkn = self.cancellation_tkn.clone();
 
         // Spawn receiver task (for acks)
@@ -92,7 +92,7 @@ impl StreamMqttClient {
      */
     pub async fn disconnect(&mut self) -> Result<(), Box<dyn Error>> {
 
-        while self.pending_requests.fetch_add(0, Ordering::SeqCst) > 0 {
+        while self.pending_requests.load(Ordering::SeqCst) > 0 {
             yield_now().await;
         }
         debug!("{:?}", self.pending_requests);
@@ -110,8 +110,7 @@ impl StreamMqttClient {
 
         // Set packet id (if needed)
         if qos == QoS::AtLeastOnce || qos == QoS::ExactlyOnce {
-            pub_req.pkid = self._client.pkid.fetch_add(1, Ordering::SeqCst);
-            if pub_req.pkid == 0 {
+            while pub_req.pkid == 0 {
                 pub_req.pkid = self._client.pkid.fetch_add(1, Ordering::SeqCst);
             }
         }
@@ -119,27 +118,24 @@ impl StreamMqttClient {
         // Serialize packet
         let mut send_buffer = BytesMut::new();
         pub_req.write(&mut send_buffer).expect("Packet serialization failed");
-
-        #[cfg(not(feature="constrained-rate"))] {
-            // Increment pending requests
-            self.pending_requests.fetch_add(1, Ordering::SeqCst);
-            let pending_requests = self.pending_requests.clone();
-            // Spawn sender task
-            tokio::spawn(async move {
-                // Clone data for async tasks
-                network.send(send_buffer.as_ref()).await.unwrap();
-                if qos == QoS::AtMostOnce {
-                    pending_requests.fetch_sub(1, Ordering::SeqCst);
+        
+        let res = network.send(send_buffer.as_ref()).await;
+        match res {
+            Ok(_) => {
+                if qos != QoS::AtMostOnce {
+                    self.pending_requests.fetch_add(1, Ordering::SeqCst);
                 }
-            });
+            },
+            _ => () // Do nothing, the message has been dropped (LIFO queue)
         }
-        #[cfg(feature="constrained-rate")]{
-            network.send(send_buffer.as_ref()).await.unwrap();
-            if qos != QoS::AtMostOnce {
-                self.pending_requests.fetch_add(1, Ordering::SeqCst);
-            }
-        }
-
         Ok(())
+    }
+    
+
+    /**
+     * Set the queue size for the network.
+     */
+    pub fn set_queue(&mut self, queue: i64){
+        self._client.network.set_queue(queue);
     }
 }
