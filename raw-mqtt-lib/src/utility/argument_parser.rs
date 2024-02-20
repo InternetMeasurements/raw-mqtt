@@ -11,6 +11,7 @@ const DEFAULT_INSECURE: bool = false;
 const DEFAULT_DEBUG: bool = false;
 const DEFAULT_RATE: f64 = 0.0;
 const DEFAULT_DURATION: usize = 10;
+const DEFAULT_QUEUE: i64 = 1024;
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -115,5 +116,9 @@ pub struct PublishStreamArgs{
     pub rate: f64,
 
     #[arg(long, default_value_t=DEFAULT_DURATION)]
-    pub duration: usize
+    pub duration: usize,
+
+    #[clap(allow_hyphen_values = true)]
+    #[arg(long, default_value_t=DEFAULT_QUEUE)]
+    pub queue: i64
 }

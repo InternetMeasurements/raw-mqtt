@@ -13,13 +13,10 @@ use raw_mqtt::Version;
 async fn main() -> Result<(),  Box<dyn error::Error>> {
 
     // Parse command line arguments
-    let (request, args, message_payload, rate, duration) =  match MqttStreamCli::parse() {
+    let (request, args, message_payload, rate, duration, queue) =  match MqttStreamCli::parse() {
         MqttStreamCli::Publish(args) => {
             let payload = match args.args.size {
-                Some(mut size) => {
-                    if args.rate > 0f64 {
-                        size = size - 33;
-                    }
+                Some(size) => {
                     String::from_utf8(vec![127_u8; size]).unwrap()
                 },
                 None => {
@@ -31,11 +28,12 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
                 args.args.args,
                 Some(payload),
                 if args.rate > 0.0 {Some(args.rate)} else { None },
-                if args.duration > 0 {Some(args.duration)} else { None }
+                if args.duration > 0 {Some(args.duration)} else { None },
+                Some(args.queue)
             )
         },
         MqttStreamCli::Subscribe(args) => {
-            (Request::Subscribe, args.args, None, None, None)
+            (Request::Subscribe, args.args, None, None, None, None)
         }
     };
 
@@ -64,8 +62,12 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
         args.insecure
     );
 
-    client.connect().await?;
+    // Set queue size
+    if queue.is_some() {
+        client.set_queue(queue.unwrap());
+    }
 
+    client.connect().await?;
     match request {
         Request::Publish => {
             let payload = message_payload.unwrap();
@@ -95,7 +97,7 @@ async fn main() -> Result<(),  Box<dyn error::Error>> {
                         // Publish new message (stream publish)
                         client.stream_publish(
                             topic.to_string(),
-                            format!("{:}{:}", generation_timestamp, payload),
+                            format!("{:}{:}", generation_timestamp, payload)[0..payload.len()].to_string(),
                             qos
                         ).await?;
                     }
