@@ -9,9 +9,6 @@ const DEFAULT_PROTO_VERSION: &str = "3.1.1";
 const DEFAULT_SERVER_NAME: &str = "localhost";
 const DEFAULT_INSECURE: bool = false;
 const DEFAULT_DEBUG: bool = false;
-const DEFAULT_RATE: f64 = 0.0;
-const DEFAULT_DURATION: usize = 10;
-const DEFAULT_QUEUE: i64 = 1024;
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -72,7 +69,7 @@ pub struct Args {
 ))]
 pub struct PublishArgs {
     #[command(flatten)]
-    pub args: Args,
+    pub common_args: Args,
 
     #[arg(short, long, group = "payload")]
     pub size: Option<usize>,
@@ -85,35 +82,5 @@ pub struct PublishArgs {
 #[command(author, version, about, long_about = None)]
 pub struct SubscribeArgs {
     #[command(flatten)]
-    pub args: Args,
-}
-
-#[cfg(feature = "pub_stream")]
-#[derive(Parser)]
-#[command(name = "mqtt-client")]
-#[command(bin_name = "mqtt-client")]
-pub enum MqttStreamCli {
-    #[clap(alias = "pub")]
-    Publish(PublishStreamArgs),
-
-    #[clap(alias = "sub")]
-    Subscribe(SubscribeArgs),
-}
-
-#[cfg(feature = "pub_stream")]
-#[derive(clap::Args)]
-#[command(author, version, about, long_about = None)]
-pub struct PublishStreamArgs {
-    #[command(flatten)]
-    pub args: PublishArgs,
-
-    #[arg(short, long, default_value_t=DEFAULT_RATE)]
-    pub rate: f64,
-
-    #[arg(long, default_value_t=DEFAULT_DURATION)]
-    pub duration: usize,
-
-    #[clap(allow_hyphen_values = true)]
-    #[arg(long, default_value_t=DEFAULT_QUEUE)]
-    pub queue: i64,
+    pub common_args: Args,
 }

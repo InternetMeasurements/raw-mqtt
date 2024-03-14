@@ -3,7 +3,8 @@ use log::{debug, info, LevelFilter};
 use mqttbytes::QoS;
 use raw_mqtt::client::stream_client::StreamMqttClient;
 use raw_mqtt::network::transport::Transport;
-use raw_mqtt::utility::argument_parser::{MqttStreamCli, Request};
+use raw_mqtt::utility::argument_parser::Request;
+use raw_mqtt::utility::stream_argument_parser::MqttStreamCli;
 use raw_mqtt::Version;
 use std::error;
 use std::str::FromStr;
@@ -12,31 +13,41 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn error::Error>> {
     // Parse command line arguments
-    let (request, args, message_payload, rate, duration, queue) = match MqttStreamCli::parse() {
-        MqttStreamCli::Publish(args) => {
-            let payload = match args.args.size {
-                Some(size) => String::from_utf8(vec![127_u8; size]).unwrap(),
-                None => args.args.message.unwrap(),
-            };
-            (
-                Request::Publish,
-                args.args.args,
-                Some(payload),
-                if args.rate > 0.0 {
-                    Some(args.rate)
-                } else {
-                    None
-                },
-                if args.duration > 0 {
-                    Some(args.duration)
-                } else {
-                    None
-                },
-                Some(args.queue),
-            )
-        }
-        MqttStreamCli::Subscribe(args) => (Request::Subscribe, args.args, None, None, None, None),
-    };
+    let (request, args, message_payload, rate, duration, queue, nagle) =
+        match MqttStreamCli::parse() {
+            MqttStreamCli::Publish(stream_args) => {
+                let payload = match stream_args.publish_args.size {
+                    Some(size) => String::from_utf8(vec![127_u8; size]).unwrap(),
+                    None => stream_args.publish_args.message.unwrap(),
+                };
+                (
+                    Request::Publish,
+                    stream_args.publish_args.common_args,
+                    Some(payload),
+                    if stream_args.rate > 0.0 {
+                        Some(stream_args.rate)
+                    } else {
+                        None
+                    },
+                    if stream_args.duration > 0 {
+                        Some(stream_args.duration)
+                    } else {
+                        None
+                    },
+                    Some(stream_args.queue),
+                    Some(!stream_args.nagle_off),
+                )
+            }
+            MqttStreamCli::Subscribe(subscribe_args) => (
+                Request::Subscribe,
+                subscribe_args.common_args,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+        };
 
     // Set log level
     env_logger::builder()
@@ -50,7 +61,20 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     debug!("{:?}", args);
 
     let proto_version = Version::from_str(args.proto_version.as_str()).unwrap();
-    let transport = Transport::from_str(args.transport.as_str()).unwrap();
+    let mut transport = Transport::from_str(args.transport.as_str()).unwrap();
+    match transport {
+        Transport::TCP(ref mut config) => {
+            config.nagle = nagle.unwrap();
+        }
+        Transport::TLS(ref mut config) => {
+            config.insecure = args.insecure;
+            config.nagle = nagle.unwrap();
+        }
+        Transport::QUIC(ref mut config) => {
+            config.insecure = args.insecure;
+        }
+    }
+
     let qos = match { args.qos } {
         0 => QoS::AtMostOnce,
         1 => QoS::AtLeastOnce,
@@ -64,7 +88,6 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         args.port.to_string(),
         transport,
         proto_version,
-        args.insecure,
     );
 
     // Set queue size
