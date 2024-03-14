@@ -15,9 +15,45 @@ use crate::network::server_verification::{QuinnSkipServerVerification, SkipServe
 
 #[derive(Debug, Copy, Clone)]
 pub enum Transport {
-    TCP,
-    TLS,
-    QUIC,
+    TCP(TcpConfig),
+    TLS(TlsConfig),
+    QUIC(QuicConfig),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct TcpConfig {
+    pub nagle: bool,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct TlsConfig {
+    pub insecure: bool,
+    pub nagle: bool,
+}
+#[derive(Debug, Copy, Clone)]
+pub struct QuicConfig {
+    pub insecure: bool,
+}
+
+impl Default for TcpConfig {
+    fn default() -> TcpConfig {
+        TcpConfig { nagle: true }
+    }
+}
+
+impl Default for TlsConfig {
+    fn default() -> TlsConfig {
+        TlsConfig {
+            insecure: false,
+            nagle: true,
+        }
+    }
+}
+
+impl Default for QuicConfig {
+    fn default() -> QuicConfig {
+        QuicConfig { insecure: false }
+    }
 }
 
 impl FromStr for Transport {
@@ -25,9 +61,12 @@ impl FromStr for Transport {
 
     fn from_str(transport: &str) -> Result<Transport, Self::Err> {
         match transport {
-            "tcp" => Ok(Transport::TCP),
-            "tls" => Ok(Transport::TLS),
-            "quic" => Ok(Transport::QUIC),
+            "tcp" => Ok(Transport::TCP(TcpConfig { nagle: true })),
+            "tls" => Ok(Transport::TLS(TlsConfig {
+                insecure: false,
+                nagle: true,
+            })),
+            "quic" => Ok(Transport::QUIC(QuicConfig { insecure: false })),
             _ => Err("Invalid transport protocol".to_string()),
         }
     }
@@ -43,11 +82,11 @@ impl Quic {
     pub async fn new(
         host: &String,
         port: &String,
-        insecure: &bool,
+        insecure: bool,
         sever_name: &String,
     ) -> Result<Quic, Box<dyn Error>> {
         // Set server certificate verification
-        let mut tls_config = if *insecure {
+        let mut tls_config = if insecure {
             // If insecure skip server verification
             quinn_rustls::ClientConfig::builder()
                 .with_safe_defaults()
@@ -110,9 +149,14 @@ pub struct Tcp {
 }
 
 impl Tcp {
-    pub async fn new(host: &String, port: &String) -> Result<Tcp, Box<dyn Error>> {
+    pub async fn new(host: &String, port: &String, nagle: bool) -> Result<Tcp, Box<dyn Error>> {
         // Open connection
         let tcp_stream = TcpStream::connect(format!("{host}:{port}")).await?;
+
+        // Enable/Disable Nagle's algorithm
+        tcp_stream
+            .set_nodelay(nagle == false)
+            .expect("Failed to set nodelay");
 
         // Split into parse_packet and write halves
         let (rx_stream, tx_stream) = split(tcp_stream);
@@ -134,13 +178,19 @@ impl Tls {
     pub async fn new(
         host: &String,
         port: &String,
-        insecure: &bool,
+        nagle: bool,
+        insecure: bool,
         server_name: &String,
     ) -> Result<Tls, Box<dyn Error>> {
         let tcp_stream = TcpStream::connect(format!("{host}:{port}")).await?;
 
+        // Enable/Disable Nagle's algorithm
+        tcp_stream
+            .set_nodelay(nagle == false)
+            .expect("Failed to set nodelay");
+
         // Set server certificate verification
-        let tls_client_config = if *insecure {
+        let tls_client_config = if insecure {
             // If insecure skip server verification
             tokio_rustls::rustls::ClientConfig::builder()
                 .dangerous()

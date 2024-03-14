@@ -6,21 +6,21 @@ use std::error::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::network::network::Network;
-use crate::network::transport::{Quic, Tcp, Tls, Transport};
+use crate::network::transport::{Quic, QuicConfig, Tcp, TcpConfig, Tls, TlsConfig, Transport};
 
 #[derive(Debug)]
 pub enum SimpleNetwork {
-    TCP(Option<Tcp>, bool),
-    TLS(Option<Tls>, bool),
-    QUIC(Option<Quic>, bool),
+    TCP(Option<Tcp>, TcpConfig),
+    TLS(Option<Tls>, TlsConfig),
+    QUIC(Option<Quic>, QuicConfig),
 }
 #[async_trait]
 impl Network for SimpleNetwork {
-    fn new(transport: Transport, insecure: bool) -> SimpleNetwork {
+    fn new(transport: Transport) -> SimpleNetwork {
         match transport {
-            Transport::TCP => SimpleNetwork::TCP(None, insecure),
-            Transport::TLS => SimpleNetwork::TLS(None, insecure),
-            Transport::QUIC => SimpleNetwork::QUIC(None, insecure),
+            Transport::TCP(config) => SimpleNetwork::TCP(None, config),
+            Transport::TLS(config) => SimpleNetwork::TLS(None, config),
+            Transport::QUIC(config) => SimpleNetwork::QUIC(None, config),
         }
     }
 
@@ -31,14 +31,15 @@ impl Network for SimpleNetwork {
         server_name: &String,
     ) -> Result<(), Box<dyn Error>> {
         match self {
-            SimpleNetwork::TCP(tcp, _) => {
-                *tcp = Some(Tcp::new(host, port).await?);
+            SimpleNetwork::TCP(tcp, config) => {
+                *tcp = Some(Tcp::new(host, port, config.nagle).await?);
             }
-            SimpleNetwork::TLS(tls, insecure) => {
-                *tls = Some(Tls::new(host, port, insecure, &server_name).await?);
+            SimpleNetwork::TLS(tls, config) => {
+                *tls =
+                    Some(Tls::new(host, port, config.nagle, config.insecure, &server_name).await?);
             }
-            SimpleNetwork::QUIC(quic, insecure) => {
-                *quic = Some(Quic::new(host, port, insecure, &server_name).await?);
+            SimpleNetwork::QUIC(quic, config) => {
+                *quic = Some(Quic::new(host, port, config.insecure, &server_name).await?);
             }
         }
         Ok(())

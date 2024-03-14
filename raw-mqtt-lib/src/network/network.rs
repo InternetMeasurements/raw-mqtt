@@ -5,7 +5,7 @@ use std::error::Error;
 
 #[async_trait]
 pub trait Network {
-    fn new(transport: Transport, insecure: bool) -> Self;
+    fn new(transport: Transport) -> Self;
     async fn connect(
         &mut self,
         host: &String,

@@ -26,10 +26,9 @@ impl SimpleMqttClient {
         port: String,
         transport: Transport,
         version: Version,
-        insecure: bool,
     ) -> SimpleMqttClient {
         SimpleMqttClient {
-            _client: Client::new(host, server_name, port, transport, version, insecure),
+            _client: Client::new(host, server_name, port, transport, version),
         }
     }
 

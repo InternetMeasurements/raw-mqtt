@@ -20,7 +20,6 @@ pub struct ChannelNetwork {
     tracker: TaskTracker,
     cancellation_token: CancellationToken,
     transport: Transport,
-    insecure: bool,
     queue: i64,
     to_sender: Option<ChannelSender>,
     from_receiver: Option<async_channel::Receiver<BytesMut>>,
@@ -69,7 +68,7 @@ fn spawn_receiver(
 
 #[async_trait]
 impl Network for ChannelNetwork {
-    fn new(transport: Transport, insecure: bool) -> ChannelNetwork {
+    fn new(transport: Transport) -> ChannelNetwork {
         let tracker = TaskTracker::new();
         let cancellation_token = CancellationToken::new();
 
@@ -77,7 +76,6 @@ impl Network for ChannelNetwork {
             tracker,
             cancellation_token,
             transport,
-            insecure,
             queue: DEFAULT_QUEUE,
             to_sender: None,
             from_receiver: None,
@@ -117,8 +115,8 @@ impl Network for ChannelNetwork {
         }
 
         match self.transport {
-            Transport::TCP => {
-                let tcp = Tcp::new(host, port).await?;
+            Transport::TCP(config) => {
+                let tcp = Tcp::new(host, port, config.nagle).await?;
 
                 // Sender task
                 spawn_sender(
@@ -136,8 +134,8 @@ impl Network for ChannelNetwork {
                     tcp.rx_stream,
                 );
             }
-            Transport::TLS => {
-                let tls = Tls::new(host, port, &self.insecure, server_name).await?;
+            Transport::TLS(config) => {
+                let tls = Tls::new(host, port, config.nagle, config.insecure, server_name).await?;
 
                 // Sender task
                 spawn_sender(
@@ -155,8 +153,8 @@ impl Network for ChannelNetwork {
                     tls.rx_stream,
                 );
             }
-            Transport::QUIC => {
-                let quic = Quic::new(host, port, &self.insecure, &server_name).await?;
+            Transport::QUIC(config) => {
+                let quic = Quic::new(host, port, config.insecure, &server_name).await?;
 
                 // Sender task
                 spawn_sender(

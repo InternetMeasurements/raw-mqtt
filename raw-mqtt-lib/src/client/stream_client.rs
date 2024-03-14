@@ -38,10 +38,9 @@ impl StreamMqttClient {
         port: String,
         transport: Transport,
         version: Version,
-        insecure: bool,
     ) -> StreamMqttClient {
         StreamMqttClient {
-            _client: Client::new(host, server_name, port, transport, version, insecure),
+            _client: Client::new(host, server_name, port, transport, version),
             pending_requests: Arc::new(AtomicU16::new(0)),
             cancellation_tkn: CancellationToken::new(),
         }

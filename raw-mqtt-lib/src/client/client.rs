@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Arc;
 
 use crate::network::network::Network;
-use crate::network::transport::Transport;
+use crate::network::transport::{TcpConfig, Transport};
 use crate::{parse_packet, Version, ACK_PACKET_SIZE};
 
 #[derive(Debug, Clone)]
@@ -33,7 +33,7 @@ where
             server_name: "localhost".to_string(),
             port: "1883".to_string(),
             version: Version::V311,
-            network: T::new(Transport::TCP, true),
+            network: T::new(Transport::TCP(TcpConfig::default())),
         }
     }
 }
@@ -45,7 +45,6 @@ impl<T> Client<T> {
         port: String,
         transport: Transport,
         version: Version,
-        insecure: bool,
     ) -> Client<T>
     where
         T: Network,
@@ -56,7 +55,7 @@ impl<T> Client<T> {
             server_name,
             port,
             version,
-            network: T::new(transport, insecure),
+            network: T::new(transport),
             pkid: Arc::new(AtomicU16::new(1)),
         }
     }
