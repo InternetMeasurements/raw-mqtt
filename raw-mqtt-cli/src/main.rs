@@ -18,9 +18,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
                 Some(size) => String::from_utf8(vec![127_u8; size]).unwrap(),
                 None => args.message.unwrap(),
             };
-            (Request::Publish, args.args, Some(payload))
+            (Request::Publish, args.common_args, Some(payload))
         }
-        MqttCli::Subscribe(args) => (Request::Subscribe, args.args, None),
+        MqttCli::Subscribe(args) => (Request::Subscribe, args.common_args, None),
     };
 
     // Set log level
@@ -35,7 +35,16 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     debug!("{:?}", args);
 
     let proto_version = Version::from_str(args.proto_version.as_str()).unwrap();
-    let transport = Transport::from_str(args.transport.as_str()).unwrap();
+    let mut transport = Transport::from_str(args.transport.as_str()).unwrap();
+    match transport {
+        Transport::TLS(ref mut config) => {
+            config.insecure = args.insecure;
+        }
+        Transport::QUIC(ref mut config) => {
+            config.insecure = args.insecure;
+        }
+        _ => {}
+    }
     let qos = match { args.qos } {
         0 => QoS::AtMostOnce,
         1 => QoS::AtLeastOnce,
@@ -48,8 +57,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         args.server_name,
         args.port.to_string(),
         transport,
-        proto_version,
-        args.insecure,
+        proto_version
     );
 
     client.connect().await?;
